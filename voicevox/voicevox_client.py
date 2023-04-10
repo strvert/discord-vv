@@ -29,7 +29,7 @@ class VoiceVoxQuery:
     post_phoneme_length: float = 0
 
     acceleration_count: int = 15
-    acceleration_scale: float = 1.5
+    acceleration_scale: float = 1.2
 
     def __init__(self, text, speaker_id):
         self.text = text

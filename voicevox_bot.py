@@ -1,4 +1,5 @@
 import discord
+from discord import app_commands
 from discord.channel import VoiceChannel
 from discord.player import FFmpegPCMAudio
 import asyncio
@@ -11,10 +12,11 @@ from extra_message.extra_message import ExtraMessageChain
 from extra_message.ozanari_user import OzanariUserExtraMessage
 from extra_message.zunda_oracle import ZundaOracleExtraMessage
 from extra_message.url_omitted import URLOmittedExtraMessage
+from extra_message.morphological_analysis import MorphologicalAnalysisExtraMessage
 
 from voicevox.voicevox_client import VoiceVoxQuery, VoiceVoxSynthesis
 from voicebox_bot.voicechannel import VoiceClientManager
-from typing import Callable, Dict, Tuple
+from typing import Callable, Dict, Tuple, Optional
 
 # https://discord.com/api/oauth2/authorize?client_id=1094263434276786217&permissions=3148800&scope=bot
 
@@ -25,29 +27,32 @@ intents = discord.Intents.default()
 intents.typing = False
 intents.message_content = True
 client = discord.Client(intents=intents)
+command_tree = app_commands.CommandTree(client)
 
 extra_message_chain = ExtraMessageChain([
     URLOmittedExtraMessage(),
-    OzanariUserExtraMessage({705984080109633556: "ろくろ"}, 30),
-    ZundaOracleExtraMessage("ねえずんだもん、", env_token.OPENAI_TOKEN)
+    OzanariUserExtraMessage({705984080109633556: "ろくろ", 573247775869763741: "いのり"}, 3),
+    ZundaOracleExtraMessage("ねえずんだもん、", env_token.OPENAI_TOKEN),
+    MorphologicalAnalysisExtraMessage("ずんだもん形態素解析して。")
 ])
 
-def modify_message(message: discord.Message) -> str | None:
+def modify_message(message: discord.Message) -> Optional[Tuple[str, Optional[str]]]: # (voice_content, text_content)
     content = message.content
 
-    extra = extra_message_chain.get_extra_message(message) 
+    extra = extra_message_chain.get_extra_message(message)
     if extra is not None:
         extra_content = extra[0].lower()
         is_omit_long_text = extra[1]
+        is_send_as_text = extra[2]
         if not is_omit_long_text:
-            return extra_content
+            return extra_content, extra_content if is_send_as_text else None
         else:
             content = extra_content
 
     # 40文字以上は省略
     limit_length = 40
     if len(content) > limit_length:
-        return content[:limit_length] + "って長い！　詠唱破棄"
+        return content[:limit_length] + "って長い！　詠唱破棄", content
 
     return None
 
@@ -56,11 +61,6 @@ def get_voice_channel(message: discord.Message) -> VoiceChannel | None:
     if message.author.voice is None:
         return None
     return message.author.voice.channel
-
-
-@client.event
-async def on_ready():
-    print(f"ログインしました: {client.user.name} (ID: {client.user.id})")
 
 
 async def write_wav_file(file_name: str, data: bytes):
@@ -74,32 +74,58 @@ def generate_file_name():
 
 voice_clients = VoiceClientManager()
 
-async def on_message_handler(message: discord.Message):
-    voice_channel = get_voice_channel(message)
-    if voice_channel is None:
+current_speaker_id = 3
+def cache_speaker_list():
+    global current_speaker_id
+    current_speaker_id = 21
+
+
+@command_tree.command(name="vv", description="discord vv をボイスチャンネルに招待します")
+async def invite_voicevox(inter: discord.Interaction):
+    voice_channel = inter.user.voice.channel
+    voice_client = await voice_clients.new_voice_client(inter.guild_id, voice_channel, inter.channel_id)
+    if voice_client is None:
+        await inter.response.send_message("ボイスチャンネルに接続できませんでした", ephemeral=True)
         return
+    await inter.response.send_message("よばれて飛び出てずんだもん ", ephemeral=False)
+
+@command_tree.command(name="set-voice", description="discord vv の声を変更します")
+async def set_voice_voicevox(inter: discord.Interaction, voice_id: str):
+    global current_speaker_id
+    current_speaker_id = int(voice_id)
+    await inter.response.send_message(f"声を変更しました。{voice_id}", ephemeral=False)
+
+async def on_message_handler(message: discord.Message):
     print(f"message: {message.content}")
 
-    modified_message = modify_message(message)
+    voice_client_result = voice_clients.get_voice_client(message.guild.id)
+    voice_client, voice_client_lock, inter_channel_id = voice_client_result if voice_client_result is not None else (None, None, None)
+
+    if voice_client is not None and inter_channel_id != message.channel.id:
+        return
+
+    modify_result = modify_message(message)
+    modified_message, text_message = modify_result if modify_result is not None else (None, None)
+
     if modified_message is not None:
         print(f"extra: {modified_message}")
         voice_message = modified_message
     else:
         voice_message = message.content.lower()
 
-    voice_client, voice_client_lock = await voice_clients.new_voice_client(message.guild.id, voice_channel)
+    if text_message is not None:
+        await message.channel.send(text_message)
+
     if voice_client is None:
         return
 
-    speaker_id = 3
-
-    query = VoiceVoxQuery(voice_message, speaker_id)
-    query.set_speed(1.0)
+    query = VoiceVoxQuery(voice_message, current_speaker_id)
+    query.set_speed(1.2)
     query_content = await query.execute()
     if query_content is None:
         return None
 
-    synthesis = VoiceVoxSynthesis.from_query(query_content, speaker_id)
+    synthesis = VoiceVoxSynthesis.from_query(query_content, current_speaker_id)
     wav_bytes = await synthesis.execute()
     if wav_bytes is None:
         return
@@ -122,5 +148,12 @@ async def on_message(message: discord.Message):
         return
 
     asyncio.create_task(on_message_handler(message))
+
+
+@client.event
+async def on_ready():
+    print(f"ログインしました: {client.user.name} (ID: {client.user.id})")
+    await command_tree.sync()
+
 
 client.run(env_token.DISCORD_TOKEN)

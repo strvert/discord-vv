@@ -19,7 +19,7 @@ class ZundaOracleExtraMessage(ExtraMessage):
                     'ずんだもんはかならず語尾に「のだ」か「なのだ」をつけて喋ります。以下はずんだもんのセリフの例です。'
                     '「ボクはずんだもんなのだ！」「ずん子と一緒にずんだ餅を全国区のスイーツにする。それがずんだもんの野望なのだ！」'
                     '「かわいい精霊、ずんだもんにお任せなのだ！」「この動画には以下の要素が含まれているのだ。大丈夫なのだ？」「ずんだもんが手伝うのだ！」'
-                    '以下は実際の質問文です。 {input}', input_variables=['input']))
+                    '以下は実際の質問文です。 {input}。', input_variables=['input']))
                 ])
         self.chain = LLMChain(llm=self.llm, prompt=question_prompt)
 
@@ -28,6 +28,9 @@ class ZundaOracleExtraMessage(ExtraMessage):
 
     def is_omit_long_text(self) -> bool:
         return False
+
+    def is_send_as_text(self) -> bool:
+        return True
 
     def is_consumed(self) -> bool:
         return True

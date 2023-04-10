@@ -8,6 +8,9 @@ class URLOmittedExtraMessage(ExtraMessage):
     def is_omit_long_text(self) -> bool:
         return False
 
+    def is_send_as_text(self) -> bool:
+        return False
+
     def is_consumed(self) -> bool:
         return True
 

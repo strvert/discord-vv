@@ -1,6 +1,6 @@
 import discord
 from abc import ABCMeta, abstractmethod
-from typing import Tuple
+from typing import Tuple, Optional
 
 
 class ExtraMessage(metaclass=ABCMeta):
@@ -18,6 +18,11 @@ class ExtraMessage(metaclass=ABCMeta):
     def is_omit_long_text(self) -> bool:
         """
         長文省略処理の対象とするか
+        """
+    @abstractmethod
+    def is_send_as_text(self) -> bool:
+        """
+        テキストとして送信するか
         """
 
     @abstractmethod
@@ -45,22 +50,24 @@ class ExtraMessageChain():
     def add_extra_message(self, extra_message: ExtraMessage):
         self.extra_messages.append(extra_message)
 
-    def get_extra_message(self, message: discord.Message) -> Tuple[str, bool] | None:
+    def get_extra_message(self, message: discord.Message) -> Optional[Tuple[str, bool, bool]]:
         """
         特殊メッセージを取得する
         """
         is_extra = False
         is_omit_long_text = False
+        is_send_as_text = False
         result_message = message
         for extra_message in self.extra_messages:
             if extra_message.is_supported(result_message):
                 result_message = extra_message.get_extra_message(result_message)
                 is_omit_long_text = is_omit_long_text or extra_message.is_omit_long_text()
+                is_send_as_text = extra_message.is_send_as_text()
                 is_extra = True
                 if extra_message.is_consumed():
                     break
 
         if is_extra:
-            return result_message, is_omit_long_text
+            return result_message, is_omit_long_text, is_send_as_text
 
         return None
