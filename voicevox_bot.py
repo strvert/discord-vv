@@ -8,6 +8,7 @@ import datetime
 import env_token
 import uuid
 import os
+import json
 from extra_message.extra_message import ExtraMessageChain
 from extra_message.ozanari_user import OzanariUserExtraMessage
 from extra_message.zunda_oracle import ZundaOracleExtraMessage
@@ -16,7 +17,7 @@ from extra_message.morphological_analysis import MorphologicalAnalysisExtraMessa
 
 from voicevox.voicevox_client import VoiceVoxQuery, VoiceVoxSynthesis
 from voicebox_bot.voicechannel import VoiceClientManager
-from typing import Callable, Dict, Tuple, Optional
+from typing import Dict, Tuple, Optional
 
 # https://discord.com/api/oauth2/authorize?client_id=1094263434276786217&permissions=3148800&scope=bot
 
@@ -29,9 +30,12 @@ intents.message_content = True
 client = discord.Client(intents=intents)
 command_tree = app_commands.CommandTree(client)
 
+config = json.load(open("config.json", "r", encoding="utf-8")) # type: Dict
+print(config)
+
 extra_message_chain = ExtraMessageChain([
     URLOmittedExtraMessage(),
-    OzanariUserExtraMessage({705984080109633556: "ろくろ", 573247775869763741: "いのり"}, 3),
+    OzanariUserExtraMessage(config),
     ZundaOracleExtraMessage("ねえずんだもん、", env_token.OPENAI_TOKEN),
     MorphologicalAnalysisExtraMessage("ずんだもん形態素解析して。")
 ])
@@ -79,6 +83,10 @@ def cache_speaker_list():
     global current_speaker_id
     current_speaker_id = 21
 
+for define_extra_commands in extra_message_chain.get_extra_commands():
+    command_tree.add_command(define_extra_commands)
+
+# @command_tree.command(name="give-knowledge", description="ずんだもんに知識を授けます")
 
 @command_tree.command(name="vv", description="discord vv をボイスチャンネルに招待します")
 async def invite_voicevox(inter: discord.Interaction):
@@ -88,6 +96,11 @@ async def invite_voicevox(inter: discord.Interaction):
         await inter.response.send_message("ボイスチャンネルに接続できませんでした", ephemeral=True)
         return
     await inter.response.send_message("よばれて飛び出てずんだもん ", ephemeral=False)
+
+@command_tree.command(name="sync", description="discord vv のコマンドを同期します")
+async def sync_commands(inter: discord.Interaction):
+    await command_tree.sync()
+    await inter.response.send_message("同期したのだ", ephemeral=False)
 
 @command_tree.command(name="set-voice", description="discord vv の声を変更します")
 async def set_voice_voicevox(inter: discord.Interaction, voice_id: str):
@@ -154,6 +167,5 @@ async def on_message(message: discord.Message):
 async def on_ready():
     print(f"ログインしました: {client.user.name} (ID: {client.user.id})")
     await command_tree.sync()
-
 
 client.run(env_token.DISCORD_TOKEN)

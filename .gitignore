@@ -2,3 +2,5 @@ __pycache__/
 env_token.py
 env/
 output/
+*.faiss
+config.json

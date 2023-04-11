@@ -16,3 +16,6 @@ class URLOmittedExtraMessage(ExtraMessage):
 
     def get_extra_message(self, _: discord.Message) -> str:
         return "URL省略"
+
+    def get_extra_commands(self):
+        return None

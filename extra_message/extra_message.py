@@ -1,6 +1,7 @@
 import discord
 from abc import ABCMeta, abstractmethod
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Callable, List
+from discord import app_commands
 
 
 class ExtraMessage(metaclass=ABCMeta):
@@ -37,6 +38,12 @@ class ExtraMessage(metaclass=ABCMeta):
         特殊メッセージを取得する
         """
 
+    @abstractmethod
+    def get_extra_commands(self) -> Optional[List[app_commands.Command]]:
+        """
+        ExtraMessage特有のコマンドを取得する
+        """
+
 
 class ExtraMessageChain():
     """
@@ -71,3 +78,14 @@ class ExtraMessageChain():
             return result_message, is_omit_long_text, is_send_as_text
 
         return None
+    
+    def get_extra_commands(self) -> list[app_commands.Command]:
+        """
+        特殊メッセージを取得するコマンドを取得する
+        """
+        commands: List[app_commands.Command] = []
+        for extra_message in self.extra_messages:
+            command = extra_message.get_extra_commands()
+            if command is not None:
+                commands.extend(command)
+        return commands

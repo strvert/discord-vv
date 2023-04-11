@@ -39,6 +39,9 @@ class MorphologicalAnalysisExtraMessage(ExtraMessage):
 
         return str(tokens)
 
+    def get_extra_commands(self):
+        return None
+
     @staticmethod
     def split_camel_case(word) -> str:
         splited = re.sub('([A-Z][a-z]+)', r' \1', re.sub('([A-Z]+)', r' \1', word)) # type: str

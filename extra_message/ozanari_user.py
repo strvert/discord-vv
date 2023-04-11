@@ -5,12 +5,19 @@ from typing import Dict
 
 
 class OzanariUserExtraMessage(ExtraMessage):
-    ozanari_users: Dict[int, str]
+    ozanari_users: Dict[int, str] = {}
     percentage: int
 
-    def __init__(self, ozanari_users: Dict[int, str], percentage: int):
-        self.ozanari_users = ozanari_users
-        self.percentage = percentage
+    def __init__(self, config: Dict):
+        ozanari_conf = config.get('extra_message').get("ozanari")
+        users_config = ozanari_conf.get("users")
+
+        for user in users_config:
+            self.ozanari_users[int(user["id"])] = user["name"]
+
+        self.percentage = ozanari_conf.get("percentage")
+        print(self.ozanari_users)
+        print(self.percentage)
 
     def is_supported(self, message: discord.Message) -> bool:
         user = message.author # type : discord.User
@@ -35,3 +42,6 @@ class OzanariUserExtraMessage(ExtraMessage):
         if ozanari_user is None:
             return message.content
         return f"{ozanari_user}、お前のことは知らない"
+
+    def get_extra_commands(self):
+        return None
