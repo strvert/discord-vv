@@ -45,13 +45,13 @@ def modify_message(message: discord.Message) -> Optional[Tuple[str, Optional[str
 
     extra = extra_message_chain.get_extra_message(message)
     if extra is not None:
-        extra_content = extra[0].lower()
+        extra_content = extra[0]
         is_omit_long_text = extra[1]
         is_send_as_text = extra[2]
         if not is_omit_long_text:
-            return extra_content, extra_content if is_send_as_text else None
+            return extra_content.lower(), extra_content if is_send_as_text else None
         else:
-            content = extra_content
+            content = extra_content.lower()
 
     # 40文字以上は省略
     limit_length = 40
