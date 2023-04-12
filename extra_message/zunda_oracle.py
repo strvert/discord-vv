@@ -60,22 +60,26 @@ class ZundaOracleExtraMessage(ExtraMessage):
 
     def get_extra_message(self, message: discord.Message) -> str:
         query = message.content[len(self.wake_word):]
-        documents_and_scores = self.faiss_indexes.similarity_search_with_score(query, k=10)
+        final_query = ''
 
-        # 合計1000文字まで資料を結合
-        con_doc = ''
-        for doc, score in documents_and_scores:
-            if score > 0.35:
-                break
-            if len(con_doc) < 1000:
-                con_doc += doc.page_content
+        if self.faiss_indexes is not None:
+            documents_and_scores = self.faiss_indexes.similarity_search_with_score(query, k=10)
 
-        if con_doc != '':
-            con_doc = f'ずんだもんの知識:{con_doc}\n'
+            # 合計1000文字まで資料を結合
+            con_doc = ''
+            for doc, score in documents_and_scores:
+                if score > 0.35:
+                    break
+                if len(con_doc) < 1000:
+                    con_doc += doc.page_content
 
-        final_query = f"{con_doc}質問: {query}"
+            if con_doc != '':
+                con_doc = f'ずんだもんの知識:{con_doc}\n'
+                print(con_doc)
 
-        print(con_doc)
+            final_query = f"{con_doc}質問: {query}"
+        else:
+            final_query = f"質問: {query}"
 
         return self.chain.run(input=final_query)
 
