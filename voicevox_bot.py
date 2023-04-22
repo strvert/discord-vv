@@ -43,6 +43,7 @@ extra_message_chain = ExtraMessageChain([
 def modify_message(message: discord.Message) -> Optional[Tuple[str, Optional[str]]]: # (voice_content, text_content)
     content = message.content
 
+    is_send_as_text = False
     extra = extra_message_chain.get_extra_message(message)
     if extra is not None:
         extra_content = extra[0]
@@ -56,7 +57,7 @@ def modify_message(message: discord.Message) -> Optional[Tuple[str, Optional[str
     # 40文字以上は省略
     limit_length = 40
     if len(content) > limit_length:
-        return content[:limit_length] + "って長い！　詠唱破棄", content
+        return content[:limit_length] + "って長い！　詠唱破棄", content if is_send_as_text else None
 
     return None
 
